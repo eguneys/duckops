@@ -1,4 +1,4 @@
-import { CastlingSide, Color, FILE_NAMES, Move, RANK_NAMES, Role, Square, SquareName } from "./types"
+import { CastlingSide, Color, FILE_NAMES, MoveAndDuck, RANK_NAMES, Role, Square, SquareName } from "./types"
 
 export const defined = <A>(v: A | undefined): v is A => v !== undefined
 
@@ -65,7 +65,7 @@ export const makeSquare = (square: Square): SquareName =>
 
 
 /* e4@ */
-export const parseUci = (dstr: string): Move | undefined => {
+export const parseUci = (dstr: string): MoveAndDuck | undefined => {
     let [d, str] = dstr.split('@')
 
     const duck = parseSquare(d)
@@ -84,14 +84,14 @@ export const parseUci = (dstr: string): Move | undefined => {
 }
 
 
-export const moveEquals = (left: Move, right: Move): boolean => {
+export const moveEquals = (left: MoveAndDuck, right: MoveAndDuck): boolean => {
     return left.to === right.to && 
     left.from === right.from && 
     left.duck === right.duck && 
     left.promotion === right.promotion
 }
 
-export const makeUci = (move: Move): string => 
+export const makeUci = (move: MoveAndDuck): string => 
     makeSquare(move.duck) + '@' + makeSquare(move.from) + makeSquare(move.to) + (move.promotion ? roleToChar(move.promotion) : '')
 
 

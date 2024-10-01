@@ -3,7 +3,7 @@ import { between, bishopAttacks, kingAttacks, knightAttacks, pawnAttacks, queenA
 import { Board, boardEquals } from "./board";
 import { Setup } from "./setup";
 import { SquareSet } from "./squareSet";
-import { ByCastlingSide, ByColor, CASTLING_SIDES, CastlingSide, Color, COLORS, Move, Outcome, Piece, Square } from "./types";
+import { ByCastlingSide, ByColor, CASTLING_SIDES, CastlingSide, Color, COLORS, Move, MoveDuck, Outcome, Piece, Square } from "./types";
 import { defined, kingCastlesTo, opposite, rookCastlesTo, squareRank } from "./util";
 
 export enum IllegalSetup {
@@ -243,6 +243,10 @@ export abstract class Position {
 
         if (legal) pseudo = pseudo.union(legal)
 
+        if (piece.role === 'king') {
+          return pseudo.union(castlingDest(this, 'a')).union(castlingDest(this, 'h'))
+        }
+
         return pseudo
     }
 
@@ -301,6 +305,9 @@ export abstract class Position {
         return d
     }
 
+    play_duck(move: MoveDuck) {
+      this.board.duck = move.duck
+    }
 
     play(move: Move): boolean {
       let reset_50_moves = false
@@ -317,8 +324,6 @@ export abstract class Position {
 
         const piece = this.board.take(move.from)
         if (!piece) return false
-
-        this.board.duck = move.duck
 
         let epCapture: Piece | undefined
         if (piece.role === 'pawn') {
@@ -404,10 +409,32 @@ export class DuckChess extends Position {
         return pos.validate().map(_ => pos)
     }
 
+    static fromSetupUnchecked(setup: Setup): DuckChess {
+        const pos = new this()
+        pos.setupUnchecked(setup)
+        return pos
+    }
+
+
+
 
     clone(): DuckChess {
         return super.clone() as DuckChess
     }
+}
+
+const castlingDest = (pos: Position, side: CastlingSide): SquareSet => {
+  const king = pos.board.kingOf(pos.turn)
+  const rook = pos.castles.rook[pos.turn][side]
+
+  if (!defined(king)) { return SquareSet.empty() }
+  if (!defined(rook)) return SquareSet.empty()
+
+    if (pos.castles.path[pos.turn][side].intersects(pos.board.occupied_with_duck)) {
+      return SquareSet.empty()
+    }
+
+    return SquareSet.fromSquare(rook)
 }
 
 
@@ -454,7 +481,6 @@ export const normalizeMove = (pos: Position, move: Move): Move => {
     return {
         from: move.from,
         to: defined(rookFrom)? rookFrom: move.to,
-        duck: move.duck
     }
 }
 

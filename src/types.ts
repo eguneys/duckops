@@ -53,9 +53,13 @@ export interface Move {
     from: Square;
     to: Square;
     promotion?: Role;
+}
+
+export interface MoveDuck {
     duck: Square
 }
 
+export type MoveAndDuck = Move & MoveDuck
 
 export interface Outcome {
     winner: Color | undefined

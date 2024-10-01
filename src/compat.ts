@@ -1,6 +1,6 @@
 import { Position } from "./chess"
 import { SquareName } from "./types"
-import { makeSquare, squareFile } from "./util"
+import { makeSquare, parseSquare, squareFile } from "./util"
 
 export interface ChessgroundDestsOpts {
     chess960?: boolean
@@ -32,5 +32,22 @@ export const chessgroundDests = (pos: Position, opts?: ChessgroundDestsOpts): Ma
             res.set(makeSquare(from), d)
         }
     }
+    return res
+}
+
+
+export const duckDests = (pos: Position) => {
+
+    let res = []
+    let dests = chessgroundDests(pos)
+
+    for (let [from, tos] of dests) {
+        for (let to of tos) {
+            for (let duck of pos.duck_dests(parseSquare(from), parseSquare(to))) {
+                res.push(`${makeSquare(duck)}@${from}${to}`)
+            }
+        }
+    }
+
     return res
 }

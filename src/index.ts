@@ -13,3 +13,4 @@ export * as compat from './compat'
 
 
 export * as debug from './debug'
+export * from './fen'
