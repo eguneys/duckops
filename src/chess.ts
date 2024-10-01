@@ -1,6 +1,6 @@
 import { Result } from "@badrap/result";
 import { between, bishopAttacks, kingAttacks, knightAttacks, pawnAttacks, queenAttacks, rookAttacks } from "./attacks";
-import { Board } from "./board";
+import { Board, boardEquals } from "./board";
 import { Setup } from "./setup";
 import { SquareSet } from "./squareSet";
 import { ByCastlingSide, ByColor, CASTLING_SIDES, CastlingSide, Color, COLORS, Move, Outcome, Piece, Square } from "./types";
@@ -120,6 +120,8 @@ export interface Context {
 
 
 export abstract class Position {
+
+
     board!: Board;
     turn!: Color;
     castles!: Castles;
@@ -127,9 +129,26 @@ export abstract class Position {
     halfmoves!: number;
     fullmoves!: number;
 
+    rule50_ply = 0
+    repetitions = 0
+    cycle_length = 0
 
     protected constructor() {}
 
+    getRule50Ply() { return this.rule50_ply }
+
+    setRepetitions(repetitions: number, cycle_length: number) {
+      this.repetitions = repetitions
+      this.cycle_length = cycle_length
+    }
+
+    getRepetitions() {
+      return this.repetitions
+    }
+
+    getGamePly() {
+      return this.halfmoves
+    }
 
     reset() {
         this.board = Board.default()
@@ -167,7 +186,6 @@ export abstract class Position {
         pos.fullmoves = this.fullmoves
         return pos
     }
-
 
     protected validate(): Result<undefined, PositionError> {
 
@@ -272,7 +290,6 @@ export abstract class Position {
     outcome(): Outcome | undefined {
         if (this.isKingCaptured()) return { winner: opposite(this.turn) }
         else if (this.isStalemate()) return { winner: this.turn }
-        else return
     }
 
 
@@ -285,7 +302,8 @@ export abstract class Position {
     }
 
 
-    play(move: Move): void {
+    play(move: Move): boolean {
+      let reset_50_moves = false
         const turn = this.turn
         const epSquare = this.epSquare
         const castling = castlingSide(this, move)
@@ -298,12 +316,13 @@ export abstract class Position {
 
 
         const piece = this.board.take(move.from)
-        if (!piece) return
+        if (!piece) return false
 
         this.board.duck = move.duck
 
         let epCapture: Piece | undefined
         if (piece.role === 'pawn') {
+          reset_50_moves = true
             this.halfmoves = 0
             if (move.to === epSquare) {
                 epCapture = this.board.take(move.to + (turn === 'white' ? -8 : 8))
@@ -332,13 +351,42 @@ export abstract class Position {
 
         if (!castling) {
             const capture = this.board.set(move.to, piece) || epCapture
-            if (capture) this.playCaptureAt(move.to, capture)
+            if (capture) {
+              this.playCaptureAt(move.to, capture)
+              reset_50_moves = true
+            }
         }
+
+      return reset_50_moves
     }
+
 }
 
 
 export class DuckChess extends Position {
+
+    static make = (board: Board, rule50_ply: number, cycle_length: number) => {
+
+      let res = DuckChess.default()
+      res.board = board
+      res.rule50_ply = rule50_ply
+      res.cycle_length = cycle_length
+
+      return res
+    }
+
+
+    static make_from_move = (parent: DuckChess, m: Move) => {
+      let res = parent.clone()
+      let is_zeroing = res.play(m)
+      if (is_zeroing) {
+        res.rule50_ply = 0
+      }
+      return res
+    }
+
+
+
 
     private constructor() { super() }
 
@@ -408,4 +456,71 @@ export const normalizeMove = (pos: Position, move: Move): Move => {
         to: defined(rookFrom)? rookFrom: move.to,
         duck: move.duck
     }
+}
+
+enum GameResult {
+  WHITE_WON,
+  BLACK_WON,
+  DRAW,
+  UNDECIDED
+}
+
+export class PositionHistory {
+  positions: Position[] = []
+
+  last() { return this.positions[this.positions.length - 1] }
+
+  computeGameResult(): GameResult {
+    let pos = this.last()
+
+    if (!pos.hasDests()) {
+      if (pos.isKingCaptured()) {
+        if (pos.turn === 'white') {
+          return GameResult.BLACK_WON
+        } else {
+          return GameResult.WHITE_WON
+        }
+      } else {
+        if (pos.turn === 'white') {
+          return GameResult.WHITE_WON
+        } else {
+          return GameResult.BLACK_WON
+        }
+      }
+    }
+
+
+    if (pos.getRule50Ply() >= 100) return GameResult.DRAW
+    if (pos.getRepetitions() >= 2) return GameResult.DRAW
+
+    return GameResult.UNDECIDED
+  }
+
+  append(m: Move) {
+    this.positions.push(DuckChess.make_from_move(this.last(), m))
+    let [cycle_length, repetitions] = this.computeLastMoveRepetitions()
+    this.positions[this.positions.length - 1].setRepetitions(repetitions, cycle_length)
+  }
+
+  reset(board: Board, rule50_ply: number, game_ply: number) {
+    this.positions = []
+    this.positions.push(DuckChess.make(board, rule50_ply, game_ply))
+  }
+
+  computeLastMoveRepetitions() {
+    let cycle_length = 0
+    let last = this.positions[this.positions.length - 1]
+
+    if (last.getRule50Ply() < 4) return [cycle_length, 0]
+    for (let idx = this.positions.length - 3; idx >= 0; idx -= 2) {
+      let pos = this.positions[idx]
+      if (boardEquals(pos.board, last.board)) {
+        cycle_length = this.positions.length - 1 - idx
+        return [cycle_length, 1 + pos.getRepetitions()]
+      }
+      if (pos.getRule50Ply() < 2) return [cycle_length, 0]
+    }
+    return [cycle_length, 0]
+  }
+
 }
