@@ -3,7 +3,7 @@ import { between, bishopAttacks, kingAttacks, knightAttacks, pawnAttacks, queenA
 import { Board, boardEquals } from "./board";
 import { Setup } from "./setup";
 import { SquareSet } from "./squareSet";
-import { ByCastlingSide, ByColor, CASTLING_SIDES, CastlingSide, Color, COLORS, Move, MoveDuck, Outcome, Piece, Square } from "./types";
+import { ByCastlingSide, ByColor, CASTLING_SIDES, CastlingSide, Color, COLORS, Move, MoveAndDuck, MoveDuck, Outcome, Piece, Square } from "./types";
 import { defined, kingCastlesTo, opposite, rookCastlesTo, squareRank } from "./util";
 
 export enum IllegalSetup {
@@ -121,7 +121,6 @@ export interface Context {
 
 export abstract class Position {
 
-
     board!: Board;
     turn!: Color;
     castles!: Castles;
@@ -132,6 +131,11 @@ export abstract class Position {
     rule50_ply = 0
     repetitions = 0
     cycle_length = 0
+
+
+    get king() {
+      return this.board.kingOf(this.turn)
+    }
 
     protected constructor() {}
 
@@ -305,8 +309,15 @@ export abstract class Position {
         return d
     }
 
+    pplay(move: MoveAndDuck) {
+      let res = this.play(move)
+      this.play_duck(move)
+      return res
+    }
+
     play_duck(move: MoveDuck) {
       this.board.duck = move.duck
+      this.turn = opposite(this.turn)
     }
 
     play(move: Move): boolean {
@@ -319,7 +330,6 @@ export abstract class Position {
         this.epSquare = undefined
         this.halfmoves += 1
         if (turn == 'black') this.fullmoves += 1
-        this.turn = opposite(turn)
 
 
         const piece = this.board.take(move.from)
@@ -381,9 +391,9 @@ export class DuckChess extends Position {
     }
 
 
-    static make_from_move = (parent: DuckChess, m: Move) => {
+    static make_from_move = (parent: DuckChess, m: MoveAndDuck) => {
       let res = parent.clone()
-      let is_zeroing = res.play(m)
+      let is_zeroing = res.pplay(m)
       if (is_zeroing) {
         res.rule50_ply = 0
       }
@@ -484,7 +494,7 @@ export const normalizeMove = (pos: Position, move: Move): Move => {
     }
 }
 
-enum GameResult {
+export enum GameResult {
   WHITE_WON,
   BLACK_WON,
   DRAW,
@@ -522,7 +532,7 @@ export class PositionHistory {
     return GameResult.UNDECIDED
   }
 
-  append(m: Move) {
+  append(m: MoveAndDuck) {
     this.positions.push(DuckChess.make_from_move(this.last(), m))
     let [cycle_length, repetitions] = this.computeLastMoveRepetitions()
     this.positions[this.positions.length - 1].setRepetitions(repetitions, cycle_length)

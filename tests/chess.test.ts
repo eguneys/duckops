@@ -18,7 +18,7 @@ it('works', () => {
     const pos = DuckChess.default()
 
 
-    pos.play({ from: e2, to: e4, duck: e3 })
+    pos.pplay({ from: e2, to: e4, duck: e3 })
 
     expect(makeFen(pos.toSetup())).toBe('rnbqkbnr/pppppppp/8/8/4P3/4d3/PPPP1PPP/RNBQKBNR b KQkq - 0 1')
 
@@ -27,7 +27,7 @@ it('works', () => {
     expect(squareSet(pos.duck_dests(e7, e6)).includes('e2')).toBe(true)
     expect(squareSet(pos.duck_dests(e7, e6)).includes('e4')).toBe(false)
 
-    pos.play({ from: e7, to: e6, duck: e5 })
+    pos.pplay({ from: e7, to: e6, duck: e5 })
 
     expect(makeFen(pos.toSetup())).toBe('rnbqkbnr/pppp1ppp/4p3/4d3/4P3/8/PPPP1PPP/RNBQKBNR w KQkq - 0 2')
 })
