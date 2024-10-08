@@ -10,12 +10,12 @@ const makeSanWithoutSuffix = (pos: Position, move: MoveAndDuck): string => {
     const role = pos.board.getRole(move.from);
     if (!role) return '--';
     if (role === 'king' && (pos.board[pos.turn].has(move.to) || Math.abs(move.to - move.from) === 2)) {
-        san = move.to > move.from ? 'O-O' : 'O-O-O';
+        san += move.to > move.from ? 'O-O' : 'O-O-O';
     } else {
         const capture = pos.board.occupied.has(move.to)
             || (role === 'pawn' && squareFile(move.from) !== squareFile(move.to));
         if (role !== 'pawn') {
-            san = roleToChar(role).toUpperCase();
+            san += roleToChar(role).toUpperCase();
 
             // Disambiguation
             let others;
@@ -38,7 +38,7 @@ const makeSanWithoutSuffix = (pos: Position, move: MoveAndDuck): string => {
                     if (row) san += RANK_NAMES[squareRank(move.from)];
                 }
             }
-        } else if (capture) san = FILE_NAMES[squareFile(move.from)];
+        } else if (capture) san += FILE_NAMES[squareFile(move.from)];
 
         if (capture) san += 'x';
         san += makeSquare(move.to);
