@@ -380,7 +380,30 @@ export abstract class Position {
 
 export class DuckChess extends Position {
 
-    static make = (board: Board, rule50_ply: number, cycle_length: number) => {
+  static make = (
+    board: Board, 
+    rule50_ply: number, 
+    cycle_length: number,
+    halfmoves: number,
+    fullmoves: number,
+    turn: Color,
+    castles: Castles,
+    epSquare?: Square
+  ) => {
+    let res = DuckChess.default()
+    res.board = board
+    res.turn = turn
+    res.castles = castles
+    res.epSquare = epSquare
+    res.halfmoves = halfmoves
+    res.fullmoves = fullmoves
+    res.rule50_ply = rule50_ply
+    res.cycle_length = cycle_length
+    return res
+  }
+
+
+    static make_from_board = (board: Board, rule50_ply: number, cycle_length: number) => {
 
       let res = DuckChess.default()
       res.board = board
@@ -399,9 +422,6 @@ export class DuckChess extends Position {
       }
       return res
     }
-
-
-
 
     private constructor() { super() }
 
@@ -540,7 +560,7 @@ export class PositionHistory {
 
   reset(board: Board, rule50_ply: number, game_ply: number) {
     this.positions = []
-    this.positions.push(DuckChess.make(board, rule50_ply, game_ply))
+    this.positions.push(DuckChess.make_from_board(board, rule50_ply, game_ply))
   }
 
   computeLastMoveRepetitions() {
