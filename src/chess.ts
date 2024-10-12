@@ -315,6 +315,13 @@ export abstract class Position {
       return res
     }
 
+    can_play(move: Move): boolean {
+      const piece = this.board.take(move.from)
+      if (!piece) return false
+
+      return true
+    }
+
     play_duck(move: MoveDuck) {
       this.board.duck = move.duck
       this.turn = opposite(this.turn)
