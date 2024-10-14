@@ -550,6 +550,14 @@ export class PositionHistory {
           return GameResult.BLACK_WON
         }
       }
+    } else {
+      if (pos.isKingCaptured()) {
+        if (pos.turn === 'white') {
+          return GameResult.BLACK_WON
+        } else {
+          return GameResult.WHITE_WON
+        }
+      }
     }
 
 
