@@ -184,7 +184,7 @@ export abstract class Position {
         const pos = new (this as any).constructor()
         pos.board = this.board.clone()
         pos.turn = this.turn
-        pos.castles = this.castles
+        pos.castles = this.castles.clone()
         pos.epSquare = this.epSquare
         pos.halfmoves = this.halfmoves
         pos.fullmoves = this.fullmoves
@@ -237,7 +237,6 @@ export abstract class Position {
         const piece = this.board.get(square)
         if (!piece || piece.color !== this.turn) return SquareSet.empty()
 
-
         let pseudo, legal
         if (piece.role === 'pawn') {
             pseudo = pawnAttacks(this.turn, square).intersect(this.board[opposite(this.turn)])
@@ -267,7 +266,11 @@ export abstract class Position {
         if (legal) pseudo = pseudo.union(legal)
 
         if (piece.role === 'king') {
-          return pseudo.union(castlingDest(this, 'a')).union(castlingDest(this, 'h'))
+          pseudo = pseudo.union(castlingDest(this, 'a')).union(castlingDest(this, 'h'))
+        }
+
+        if (this.board.duck) {
+          pseudo = pseudo.without(this.board.duck)
         }
 
         return pseudo

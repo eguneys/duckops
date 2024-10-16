@@ -50,7 +50,7 @@ const makeSanWithoutSuffix = (pos: Position, move: MoveAndDuck): string => {
 
 export const makeSanAndPlay = (pos: Position, move: MoveAndDuck): string => {
   const san = makeSanWithoutSuffix(pos, move);
-  pos.play(move);
+  pos.pplay(move);
   if (pos.outcome()?.winner) return san + '#';
   return san;
 };
