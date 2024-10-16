@@ -191,6 +191,25 @@ export abstract class Position {
         return pos
     }
 
+    validate_move_can_apply(m: MoveAndDuck) {
+      let tos = this.allDests().get(m.from)
+
+      if (!tos) {
+        return false
+      }
+
+      if (!tos.has(m.to)) {
+        return false
+      }
+
+
+      if (!this.duck_dests(m.from, m.to).has(m.duck)) {
+        return false
+      }
+
+      return true
+    }
+
     protected validate(): Result<undefined, PositionError> {
 
         if (this.board.occupied.isEmpty()) return Result.err(new PositionError(IllegalSetup.Empty))
@@ -388,8 +407,8 @@ export abstract class Position {
 export class DuckChess extends Position {
 
   static make = (
-    board: Board, 
-    rule50_ply: number, 
+    board: Board,
+    rule50_ply: number,
     cycle_length: number,
     halfmoves: number,
     fullmoves: number,
@@ -410,54 +429,54 @@ export class DuckChess extends Position {
   }
 
 
-    static make_from_board = (board: Board, rule50_ply: number, cycle_length: number) => {
+  static make_from_board = (board: Board, rule50_ply: number, cycle_length: number) => {
 
-      let res = DuckChess.default()
-      res.board = board
-      res.rule50_ply = rule50_ply
-      res.cycle_length = cycle_length
+    let res = DuckChess.default()
+    res.board = board
+    res.rule50_ply = rule50_ply
+    res.cycle_length = cycle_length
 
-      return res
+    return res
+  }
+
+
+  static make_from_move = (parent: DuckChess, m: MoveAndDuck) => {
+    let res = parent.clone()
+    let is_zeroing = res.pplay(m)
+    if (is_zeroing) {
+      res.rule50_ply = 0
     }
+    return res
+  }
+
+  private constructor() { super() }
 
 
-    static make_from_move = (parent: DuckChess, m: MoveAndDuck) => {
-      let res = parent.clone()
-      let is_zeroing = res.pplay(m)
-      if (is_zeroing) {
-        res.rule50_ply = 0
-      }
-      return res
-    }
-
-    private constructor() { super() }
+  static default(): DuckChess {
+    const pos = new this()
+    pos.reset()
+    return pos
+  }
 
 
-    static default(): DuckChess {
-        const pos = new this()
-        pos.reset()
-        return pos
-    }
+  static fromSetup(setup: Setup): Result<DuckChess, PositionError> {
+    const pos = new this()
+    pos.setupUnchecked(setup)
+    return pos.validate().map(_ => pos)
+  }
 
-
-    static fromSetup(setup: Setup): Result<DuckChess, PositionError> {
-        const pos = new this()
-        pos.setupUnchecked(setup)
-        return pos.validate().map(_ => pos)
-    }
-
-    static fromSetupUnchecked(setup: Setup): DuckChess {
-        const pos = new this()
-        pos.setupUnchecked(setup)
-        return pos
-    }
+  static fromSetupUnchecked(setup: Setup): DuckChess {
+    const pos = new this()
+    pos.setupUnchecked(setup)
+    return pos
+  }
 
 
 
 
-    clone(): DuckChess {
-        return super.clone() as DuckChess
-    }
+  clone(): DuckChess {
+    return super.clone() as DuckChess
+  }
 }
 
 const castlingDest = (pos: Position, side: CastlingSide): SquareSet => {
@@ -565,6 +584,14 @@ export class PositionHistory {
     if (pos.getRepetitions() >= 2) return GameResult.DRAW
 
     return GameResult.UNDECIDED
+  }
+
+  validate_and_append(m: MoveAndDuck): string | undefined {
+    if (!this.last().validate_move_can_apply(m)) {
+      return 'Cant validate'
+    }
+
+    this.append(m)
   }
 
   append(m: MoveAndDuck) {
